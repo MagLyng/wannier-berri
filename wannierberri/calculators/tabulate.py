@@ -235,7 +235,7 @@ class Formula_OptCond(Formula):
         self.transformTR = transform_trans
         self.transformInv = transform_ident
 
-    def trace_ln(self, ik, inn1, inn2):
+    def trace(self, ik, inn1, inn2):
         return self.AA[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
 
 class OptCond(Tabulator):
