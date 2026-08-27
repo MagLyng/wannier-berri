@@ -235,8 +235,8 @@ class Formula_OptCond(Formula):
         self.transformTR = transform_trans
         self.transformInv = transform_ident
 
-    def trace(self, ik, inn1, inn2):
-        return self.AA[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+    def trace(self, ik, inn, out):
+        return self.AA[ik, inn].sum(axis=0)[out].sum(axis=0)
 
 class OptCond(Tabulator):
     r"""Optical conductivity tabulator defined self-consistently with the Formula used in dynamic.py (sorry for the bad description)"""
