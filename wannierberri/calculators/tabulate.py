@@ -219,3 +219,27 @@ class SpinBerry(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(frml.SpinOmega, **kwargs)
+
+
+from ..symmetry.point_symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
+from ..formula import Formula
+
+# Formula for the optical conductivity, taken from dynamic.py
+class Formula_OptCond(Formula):
+
+    def __init__(self, data_K, **parameters):
+        super().__init__(data_K, **parameters)
+        A = data_K.get_A_H(external_terms=self.external_terms)
+        self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :]
+        self.ndim = 2
+        self.transformTR = transform_trans
+        self.transformInv = transform_ident
+
+    def trace_ln(self, ik, inn1, inn2):
+        return self.AA[ik, inn1].sum(axis=0)[inn2].sum(axis=0)
+
+class OptCond(Tabulator):
+    r"""Optical conductivity tabulator defined self-consistently with the Formula used in dynamic.py (sorry for the bad description)"""
+
+    def __init__(self, **kwargs):
+        super().__init__(Formula_OptCond, **kwargs)
