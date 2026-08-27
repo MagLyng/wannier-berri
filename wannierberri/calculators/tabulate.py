@@ -222,13 +222,14 @@ class SpinBerry(Tabulator):
 
 
 from ..symmetry.point_symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
-from ..formula import Formula
+from ..formula import Formula_ln
 
 # Formula for the optical conductivity, taken from dynamic.py
-class Formula_OptCond(Formula):
-
+class Formula_OptCond(Formula_ln):
+    
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
+
         A = data_K.get_A_H(external_terms=self.external_terms)
         self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :]
         self.ndim = 2
