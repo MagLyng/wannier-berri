@@ -220,27 +220,59 @@ class SpinBerry(Tabulator):
     def __init__(self, **kwargs):
         super().__init__(frml.SpinOmega, **kwargs)
 
-
 from ..symmetry.point_symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
 from ..formula import Formula
+import itertools
 
-# Formula for the optical conductivity, taken from dynamic.py
-class Formula_OptCond(Formula):
+# Band resolved version of above (directly inputting band1, band2)
+class Formula_OptCond_Band_Resolved(Formula):
     
     def __init__(self, data_K, **parameters):
         super().__init__(data_K, **parameters)
 
         A = data_K.get_A_H(external_terms=self.external_terms)
-        self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :]
+        self.AA = 1j * A[:, :, :, :, None] * A.swapaxes(1, 2)[:, :, :, None, :] # (4, 4, 3, 3) shape
         self.ndim = 2
         self.transformTR = transform_trans
         self.transformInv = transform_ident
 
+    # .sum(axis=0) sums over the first axis
+    # AA[ik, inn] flattens first index, but not the second, since inn,out are arrays of indices (see __call__ method for Tabulator)
     def trace(self, ik, inn, out):
         return self.AA[ik, inn].sum(axis=0)[out].sum(axis=0)
 
-class OptCond(Tabulator):
-    r"""Optical conductivity tabulator defined self-consistently with the Formula used in dynamic.py (sorry for the bad description)"""
+class OptCond_Band_Resolved(Tabulator):
+    r"""Band resolved Optical conductivity tabulator. 
+    Gives (1.j) times absolute square of Berry connection, outputting five indices: (nk, band1, band2, dir1, dir2)
+    Usually band1, band2 are traced over, since most tabulated quantities are band diagonal, 
+    which is the motivation for creating a custom call function to hack our way out of this.
+    """
 
     def __init__(self, **kwargs):
-        super().__init__(Formula_OptCond, **kwargs)
+        super().__init__(Formula_OptCond_Band_Resolved, **kwargs)
+    # Custom __call__ routine for getting all bands
+    def __call__(self, data_K):
+            formula = self.Formula(data_K, **self.kwargs_formula)
+            nk = data_K.nk
+            NB = data_K.num_wann
+            ibands = self.ibands
+            if ibands is None:
+                ibands = np.arange(NB)
+            # band_groups should be all combinations of bands (1, 1), (1, 2), (1, 3), (1, 4), (2, 1), (2, 2), (2, 3), (2, 4), (3, 1), ...
+            band_groups = [[] for _ in range(nk)] # Making empty array
+            for ik in range(nk):
+                band_groups[ik] = list(itertools.product(ibands, repeat=2)) # Filling each entry with tuples over bands
+            # group is just band_groups, keeping for consistency with general __call__ method
+            group = band_groups
+            rslt = np.zeros((nk, len(ibands), len(ibands)) + (3,) * formula.ndim)
+            for ik in range(nk):
+                values = {}
+                for n in band_groups[ik]:
+                    inn = [n[0]]
+                    out = [n[1]]
+                    values[n] = formula.trace(ik, inn, out) 
+                # We need to enumerate over the product in order to get correct index for group
+                for i, (ib1, ib2) in enumerate(itertools.product(ibands, repeat=2)):
+                    rslt[ik, ib1, ib2] = values[group[ik][i]]
+            rslt *= self.constant_factor
+            return KBandResult(rslt, transformTR=formula.transformTR, transformInv=formula.transformInv)
