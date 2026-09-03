@@ -223,6 +223,7 @@ class SpinBerry(Tabulator):
 from ..symmetry.point_symmetry import transform_ident, transform_trans, transform_odd, transform_odd_trans_021
 from ..formula import Formula
 import itertools
+from .. import factors as factors
 
 # Band resolved version of above (directly inputting band1, band2)
 class Formula_OptCond_Band_Resolved(Formula):
@@ -250,6 +251,7 @@ class OptCond_Band_Resolved(Tabulator):
 
     def __init__(self, **kwargs):
         super().__init__(Formula_OptCond_Band_Resolved, **kwargs)
+        self.constant_factor = factors.factor_opt
     # Custom __call__ routine for getting all bands
     def __call__(self, data_K):
             formula = self.Formula(data_K, **self.kwargs_formula)
@@ -273,6 +275,6 @@ class OptCond_Band_Resolved(Tabulator):
                     values[n] = formula.trace(ik, inn, out) 
                 # We need to enumerate over the product in order to get correct index for group
                 for i, (ib1, ib2) in enumerate(itertools.product(ibands, repeat=2)):
-                    rslt[ik, ib1, ib2] = values[group[ik][i]]
+                    rslt[ik, ib1, ib2] = values[group[ik][i]].imag
             rslt *= self.constant_factor
             return KBandResult(rslt, transformTR=formula.transformTR, transformInv=formula.transformInv)
